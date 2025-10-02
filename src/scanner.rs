@@ -65,60 +65,60 @@ impl Scanner {
         self.source.get(self.current + 1)
     }
 
-    pub fn scan_token(&mut self) -> Option<Token> {
+    pub fn scan_token(&mut self) -> Result<Token> {
         self.skip_whitespace();
         self.start = self.current;
 
         // We have reached the end. Note that we still need to do this check
         // when we're lexing other things inside.
         if self.current == self.source.len() {
-            return Some(self.make_token(TokenType::Eof));
+            return Ok(self.make_token(TokenType::Eof));
         }
 
         match self.advance() {
-            '(' => Some(self.make_token(TokenType::LeftParen)),
-            ')' => Some(self.make_token(TokenType::RightParen)),
-            '{' => Some(self.make_token(TokenType::LeftBrace)),
-            '}' => Some(self.make_token(TokenType::RightBrace)),
-            ';' => Some(self.make_token(TokenType::Semicolon)),
-            ',' => Some(self.make_token(TokenType::Comma)),
-            '.' => Some(self.make_token(TokenType::Dot)),
-            '-' => Some(self.make_token(TokenType::Minus)),
-            '+' => Some(self.make_token(TokenType::Plus)),
-            '/' => Some(self.make_token(TokenType::Slash)),
-            '*' => Some(self.make_token(TokenType::Star)),
+            '(' => Ok(self.make_token(TokenType::LeftParen)),
+            ')' => Ok(self.make_token(TokenType::RightParen)),
+            '{' => Ok(self.make_token(TokenType::LeftBrace)),
+            '}' => Ok(self.make_token(TokenType::RightBrace)),
+            ';' => Ok(self.make_token(TokenType::Semicolon)),
+            ',' => Ok(self.make_token(TokenType::Comma)),
+            '.' => Ok(self.make_token(TokenType::Dot)),
+            '-' => Ok(self.make_token(TokenType::Minus)),
+            '+' => Ok(self.make_token(TokenType::Plus)),
+            '/' => Ok(self.make_token(TokenType::Slash)),
+            '*' => Ok(self.make_token(TokenType::Star)),
             '!' => {
                 if self.partner('=') {
-                    Some(self.make_token(TokenType::BangEqual))
+                    Ok(self.make_token(TokenType::BangEqual))
                 } else {
-                    Some(self.make_token(TokenType::Bang))
+                    Ok(self.make_token(TokenType::Bang))
                 }
             }
             '=' => {
                 if self.partner('=') {
-                    Some(self.make_token(TokenType::EqualEqual))
+                    Ok(self.make_token(TokenType::EqualEqual))
                 } else {
-                    Some(self.make_token(TokenType::Equal))
+                    Ok(self.make_token(TokenType::Equal))
                 }
             }
             '<' => {
                 if self.partner('=') {
-                    Some(self.make_token(TokenType::LessEqual))
+                    Ok(self.make_token(TokenType::LessEqual))
                 } else {
-                    Some(self.make_token(TokenType::Less))
+                    Ok(self.make_token(TokenType::Less))
                 }
             }
             '>' => {
                 if self.partner('=') {
-                    Some(self.make_token(TokenType::GreaterEqual))
+                    Ok(self.make_token(TokenType::GreaterEqual))
                 } else {
-                    Some(self.make_token(TokenType::Greater))
+                    Ok(self.make_token(TokenType::Greater))
                 }
             }
             '"' => self.string(),
-            c if c.is_ascii_digit() => Some(self.number()),
-            c if c.is_ascii_alphabetic() => Some(self.identifier()),
-            _ => None,
+            c if c.is_ascii_digit() => Ok(self.number()),
+            c if c.is_ascii_alphabetic() => Ok(self.identifier()),
+            _ => unreachable!(),
         }
     }
 
@@ -150,7 +150,7 @@ impl Scanner {
         self.source[self.current - 1]
     }
 
-    fn string(&mut self) -> Option<Token> {
+    fn string(&mut self) -> Result<Token> {
         while self.peek().is_some_and(|c| *c != '"') && !self.is_at_end() {
             if self.peek().is_some_and(|c| *c == '\n') {
                 self.line += 1;
@@ -159,13 +159,22 @@ impl Scanner {
         }
 
         if self.is_at_end() {
-            return None;
+            return self.report_error("File ends before string is terminated");
         }
 
         // consume the final "
         self.advance();
 
-        Some(self.make_token(TokenType::String))
+        Ok(self.make_token(TokenType::String))
+    }
+
+    /// Convenience method to report a scan error.
+    fn report_error<T>(&self, msg: &'static str) -> Result<T> {
+        return Err(ScanError {
+            line: self.line,
+            position: self.start,
+            message: msg,
+        });
     }
 
     fn number(&mut self) -> Token {
@@ -243,6 +252,15 @@ impl Scanner {
         TokenType::Identifier
     }
 }
+
+#[derive(Debug)]
+pub struct ScanError {
+    pub line: usize,
+    pub position: usize,
+    pub message: &'static str,
+}
+
+pub type Result<T> = std::result::Result<T, ScanError>;
 
 #[derive(Copy, Clone)]
 pub struct Token {
