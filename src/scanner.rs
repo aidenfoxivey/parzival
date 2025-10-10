@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 pub struct Scanner {
     pub source: Vec<char>,
     pub start: usize,
@@ -75,65 +73,66 @@ impl Scanner {
             return Ok(self.make_token(TokenType::Eof));
         }
 
-        match self.advance() {
-            '(' => Ok(self.make_token(TokenType::LeftParen)),
-            ')' => Ok(self.make_token(TokenType::RightParen)),
-            '{' => Ok(self.make_token(TokenType::LeftBrace)),
-            '}' => Ok(self.make_token(TokenType::RightBrace)),
-            ';' => Ok(self.make_token(TokenType::Semicolon)),
-            ',' => Ok(self.make_token(TokenType::Comma)),
-            '.' => Ok(self.make_token(TokenType::Dot)),
-            '-' => Ok(self.make_token(TokenType::Minus)),
-            '+' => Ok(self.make_token(TokenType::Plus)),
-            '/' => Ok(self.make_token(TokenType::Slash)),
-            '*' => Ok(self.make_token(TokenType::Star)),
-            '!' => {
-                if self.partner('=') {
-                    Ok(self.make_token(TokenType::BangEqual))
-                } else {
-                    Ok(self.make_token(TokenType::Bang))
+        if let Some(c) = self.advance() {
+            match c {
+                '(' => Ok(self.make_token(TokenType::LeftParen)),
+                ')' => Ok(self.make_token(TokenType::RightParen)),
+                '{' => Ok(self.make_token(TokenType::LeftBrace)),
+                '}' => Ok(self.make_token(TokenType::RightBrace)),
+                ';' => Ok(self.make_token(TokenType::Semicolon)),
+                ',' => Ok(self.make_token(TokenType::Comma)),
+                '.' => Ok(self.make_token(TokenType::Dot)),
+                '-' => Ok(self.make_token(TokenType::Minus)),
+                '+' => Ok(self.make_token(TokenType::Plus)),
+                '/' => Ok(self.make_token(TokenType::Slash)),
+                '*' => Ok(self.make_token(TokenType::Star)),
+                '!' => {
+                    if self.partner('=') {
+                        Ok(self.make_token(TokenType::BangEqual))
+                    } else {
+                        Ok(self.make_token(TokenType::Bang))
+                    }
                 }
-            }
-            '=' => {
-                if self.partner('=') {
-                    Ok(self.make_token(TokenType::EqualEqual))
-                } else {
-                    Ok(self.make_token(TokenType::Equal))
+                '=' => {
+                    if self.partner('=') {
+                        Ok(self.make_token(TokenType::EqualEqual))
+                    } else {
+                        Ok(self.make_token(TokenType::Equal))
+                    }
                 }
-            }
-            '<' => {
-                if self.partner('=') {
-                    Ok(self.make_token(TokenType::LessEqual))
-                } else {
-                    Ok(self.make_token(TokenType::Less))
+                '<' => {
+                    if self.partner('=') {
+                        Ok(self.make_token(TokenType::LessEqual))
+                    } else {
+                        Ok(self.make_token(TokenType::Less))
+                    }
                 }
-            }
-            '>' => {
-                if self.partner('=') {
-                    Ok(self.make_token(TokenType::GreaterEqual))
-                } else {
-                    Ok(self.make_token(TokenType::Greater))
+                '>' => {
+                    if self.partner('=') {
+                        Ok(self.make_token(TokenType::GreaterEqual))
+                    } else {
+                        Ok(self.make_token(TokenType::Greater))
+                    }
                 }
+                '"' => self.string(),
+                c if c.is_ascii_digit() => Ok(self.number()),
+                c if c.is_ascii_alphabetic() => Ok(self.identifier()),
+                _ => panic!("Unknown character"),
             }
-            '"' => self.string(),
-            c if c.is_ascii_digit() => Ok(self.number()),
-            c if c.is_ascii_alphabetic() => Ok(self.identifier()),
-            _ => unreachable!(),
+        } else {
+            return Ok(self.make_token(TokenType::Eof));
         }
     }
 
     /// Since `match` is a reserved word in Rust, I'm using `partner`.
     pub fn partner(&mut self, expected: char) -> bool {
-        if self.current == self.source.len() {
-            return false;
+        if let Some(&c) = self.source.get(self.current) {
+            if c == expected {
+                self.current += 1;
+                return true;
+            }
         }
-
-        if self.source[self.current] != expected {
-            false
-        } else {
-            self.current += 1;
-            true
-        }
+        false
     }
 
     fn make_token(&self, ty: TokenType) -> Token {
@@ -145,16 +144,21 @@ impl Scanner {
         }
     }
 
-    fn advance(&mut self) -> char {
+    pub fn advance(&mut self) -> Option<&char> {
         self.current += 1;
-        self.source[self.current - 1]
+        self.source.get(self.current - 1)
     }
 
     fn string(&mut self) -> Result<Token> {
-        while self.peek().is_some_and(|c| *c != '"') && !self.is_at_end() {
-            if self.peek().is_some_and(|c| *c == '\n') {
+        while let Some(c) = self.peek() {
+            if *c == '"' {
+                break;
+            }
+
+            if *c == '\n' {
                 self.line += 1;
             }
+
             self.advance();
         }
 
