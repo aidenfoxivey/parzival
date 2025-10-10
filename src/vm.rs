@@ -1,7 +1,7 @@
 use std::ops::Neg;
 
 use crate::chunk::{Chunk, OpCode};
-use crate::scanner::Scanner;
+use crate::scanner::{Scanner, TokenType};
 
 pub type Value = f64;
 
@@ -32,6 +32,10 @@ impl VM {
     fn compile(&mut self, source: &str, chunk: &mut Chunk) -> Result<(), VMError> {
         let chars: Vec<char> = source.chars().collect();
         let mut scanner = Scanner::new(chars);
+
+        scanner.advance();
+        scanner.expression();
+        scanner.consume(TokenType::Eof, "Expect end of expression".to_string());
 
         Ok(())
     }

@@ -275,7 +275,7 @@ pub struct Token {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-enum TokenType {
+pub enum TokenType {
     LeftParen,
     RightParen,
     LeftBrace,
