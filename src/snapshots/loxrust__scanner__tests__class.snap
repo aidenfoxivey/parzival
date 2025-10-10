@@ -1,0 +1,25 @@
+---
+source: src/scanner.rs
+expression: tys
+---
+[
+    Class,
+    Identifier,
+    Less,
+    Identifier,
+    LeftBrace,
+    Fun,
+    Identifier,
+    LeftParen,
+    Identifier,
+    RightParen,
+    LeftBrace,
+    Return,
+    Identifier,
+    Plus,
+    Number,
+    Semicolon,
+    RightBrace,
+    RightBrace,
+    Eof,
+]

@@ -198,8 +198,12 @@ impl Scanner {
         self.make_token(TokenType::Number)
     }
 
+    fn valid_id_ch(c: &char) -> bool {
+        c.is_ascii_alphanumeric() || *c == '_'
+    }
+
     fn identifier(&mut self) -> Token {
-        while self.peek().is_some_and(|c| c.is_ascii_alphanumeric()) {
+        while self.peek().is_some_and(|c| Self::valid_id_ch(c)) {
             self.advance();
         }
 
@@ -324,7 +328,8 @@ mod tests {
 
     fn accumulate_tokens(scanner: &mut Scanner) -> Vec<Token> {
         let mut tokens = vec![];
-        while let Ok(tok) = scanner.scan_token() {
+        loop {
+            let tok = scanner.scan_token().unwrap();
             tokens.push(tok);
             if tok.ty == TokenType::Eof {
                 break;
@@ -391,6 +396,29 @@ mod tests {
             var a = 50000;
             var b = 6.5324231;
             var c = 0.352423;
+        "#;
+        let tokens = instrument_scanner(source);
+        let tys: Vec<TokenType> = tokens.iter().map(|tok| tok.ty).collect();
+        insta::assert_debug_snapshot!(tys);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_illegal_string() {
+        let source = r#"
+            let illegal_string = "Hello World!
+        "#;
+        let _ = instrument_scanner(source);
+    }
+
+    #[test]
+    fn test_class() {
+        let source = r#"
+            class Banana < Fruit {
+                fun manger(a) {
+                    return a + 1;
+                }
+            }
         "#;
         let tokens = instrument_scanner(source);
         let tys: Vec<TokenType> = tokens.iter().map(|tok| tok.ty).collect();
