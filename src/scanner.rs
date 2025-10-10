@@ -248,12 +248,13 @@ impl Scanner {
 
     fn check_keyword(&self, start: usize, length: usize, rest: &str, ty: TokenType) -> TokenType {
         if self.current - self.start == start + length
-            && self.source[self.start..self.current] == rest.chars().collect::<Vec<char>>()
+            && self.source[self.start + start..self.start + start + length]
+                == rest.chars().collect::<Vec<char>>()
         {
-            return ty;
+            ty
+        } else {
+            TokenType::Identifier
         }
-
-        TokenType::Identifier
     }
 }
 
@@ -266,7 +267,7 @@ pub struct ScanError {
 
 pub type Result<T> = std::result::Result<T, ScanError>;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Token {
     ty: TokenType,
     start: usize,
@@ -316,4 +317,60 @@ pub enum TokenType {
     While,
 
     Eof,
+}
+
+mod tests {
+    use super::*;
+
+    fn accumulate_tokens(scanner: &mut Scanner) -> Vec<Token> {
+        let mut tokens = vec![];
+        while !scanner.is_at_end() {
+            let tok = scanner.scan_token().unwrap();
+            tokens.push(tok);
+        }
+        tokens
+    }
+
+    #[test]
+    fn test_parser_valid_lox() {
+        // This example is from Crafting Interpreters chapter 3.
+        let source: Vec<char> = r#"
+            fun addPair(a, b) {
+                return a + b;
+            }
+
+            fun identity(a) {
+                return a;
+            }
+
+            print identity(addPair)(1, 2); // Prints "3".
+        "#
+        .chars()
+        .collect();
+        let mut scanner = Scanner::new(source);
+        let tokens = accumulate_tokens(&mut scanner);
+        let tys: Vec<TokenType> = tokens.iter().map(|tok| tok.ty).collect();
+        insta::assert_debug_snapshot!(tys);
+    }
+
+    #[test]
+    fn test_parser_string() {
+        // This example is from Crafting Interpreters chapter 3.
+        let source: Vec<char> = r#"
+            var s = "Hello World!";
+        "#
+        .chars()
+        .collect();
+        let mut scanner = Scanner::new(source.clone());
+        let tokens = accumulate_tokens(&mut scanner);
+        let tys: Vec<TokenType> = tokens.iter().map(|tok| tok.ty).collect();
+        insta::assert_debug_snapshot!(tys);
+        assert_eq!(tokens.len(), 6); // Including the Eof token
+        let string_token = tokens[3];
+        assert_eq!(string_token.ty, TokenType::String);
+        assert_eq!(
+            source[string_token.start..string_token.start + string_token.length],
+            "\"Hello World!\"".chars().collect::<Vec<char>>()
+        );
+    }
 }
