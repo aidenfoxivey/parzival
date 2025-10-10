@@ -1,0 +1,22 @@
+---
+source: src/scanner.rs
+expression: tys
+---
+[
+    Var,
+    Identifier,
+    Equal,
+    Number,
+    Semicolon,
+    Var,
+    Identifier,
+    Equal,
+    Number,
+    Semicolon,
+    Var,
+    Identifier,
+    Equal,
+    Number,
+    Semicolon,
+    Eof,
+]

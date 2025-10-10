@@ -324,17 +324,25 @@ mod tests {
 
     fn accumulate_tokens(scanner: &mut Scanner) -> Vec<Token> {
         let mut tokens = vec![];
-        while !scanner.is_at_end() {
-            let tok = scanner.scan_token().unwrap();
+        while let Ok(tok) = scanner.scan_token() {
             tokens.push(tok);
+            if tok.ty == TokenType::Eof {
+                break;
+            }
         }
         tokens
     }
 
+    fn instrument_scanner(source: &str) -> Vec<Token> {
+        let source: Vec<char> = source.chars().collect();
+        let mut scanner = Scanner::new(source);
+        accumulate_tokens(&mut scanner)
+    }
+
     #[test]
-    fn test_parser_valid_lox() {
+    fn test_lox_example() {
         // This example is from Crafting Interpreters chapter 3.
-        let source: Vec<char> = r#"
+        let source = r#"
             fun addPair(a, b) {
                 return a + b;
             }
@@ -344,33 +352,48 @@ mod tests {
             }
 
             print identity(addPair)(1, 2); // Prints "3".
-        "#
-        .chars()
-        .collect();
-        let mut scanner = Scanner::new(source);
-        let tokens = accumulate_tokens(&mut scanner);
+        "#;
+        let tokens = instrument_scanner(source);
         let tys: Vec<TokenType> = tokens.iter().map(|tok| tok.ty).collect();
         insta::assert_debug_snapshot!(tys);
     }
 
     #[test]
-    fn test_parser_string() {
-        // This example is from Crafting Interpreters chapter 3.
-        let source: Vec<char> = r#"
-            var s = "Hello World!";
-        "#
-        .chars()
-        .collect();
-        let mut scanner = Scanner::new(source.clone());
-        let tokens = accumulate_tokens(&mut scanner);
+    fn test_lox_string() {
+        let source = r#"var s = "Hello World!";"#;
+        let tokens = instrument_scanner(source);
         let tys: Vec<TokenType> = tokens.iter().map(|tok| tok.ty).collect();
         insta::assert_debug_snapshot!(tys);
         assert_eq!(tokens.len(), 6); // Including the Eof token
         let string_token = tokens[3];
         assert_eq!(string_token.ty, TokenType::String);
         assert_eq!(
-            source[string_token.start..string_token.start + string_token.length],
-            "\"Hello World!\"".chars().collect::<Vec<char>>()
+            &source[string_token.start..string_token.start + string_token.length],
+            "\"Hello World!\""
         );
+    }
+
+    #[test]
+    fn test_comments() {
+        let source = r#"
+            // Test test test
+            // What about var a = 4;
+            // Or a string like "Hello World!"
+        "#;
+        let tokens = instrument_scanner(source);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].ty, TokenType::Eof);
+    }
+
+    #[test]
+    fn test_numbers() {
+        let source = r#"
+            var a = 50000;
+            var b = 6.5324231;
+            var c = 0.352423;
+        "#;
+        let tokens = instrument_scanner(source);
+        let tys: Vec<TokenType> = tokens.iter().map(|tok| tok.ty).collect();
+        insta::assert_debug_snapshot!(tys);
     }
 }
